@@ -4,6 +4,25 @@
   
   
   <entry>
+    <title>Codeforces Round</title>
+    <link href="/2022/06/29/Codeforces-Round-803-Div-2/"/>
+    <url>/2022/06/29/Codeforces-Round-803-Div-2/</url>
+    
+    <content type="html"><![CDATA[<h1 id="Codeforces-Round-803-Div-2"><a href="#Codeforces-Round-803-Div-2" class="headerlink" title="Codeforces Round #803 (Div. 2)"></a>Codeforces Round #803 (Div. 2)</h1><p><a href="https://codeforces.com/contest/1698">Codeforces Round #803 (Div. 2)</a></p><h2 id="A-XOR-Mixup"><a href="#A-XOR-Mixup" class="headerlink" title="A. XOR Mixup"></a>A. XOR Mixup</h2><p>题目涉及到异或运算</p><p><img src="https://s2.loli.net/2022/06/29/tg4sKzxrjT7boUH.png" alt="image-20220629130920547"></p><p>异或运算的逆运算是它本身，也就是说两次异或同一个数最后结果不变，如：3 ^ 4 ^ 4 &#x3D; 3。并且k^k&#x3D;0</p><p>因为对于题目给出的数组[a1,a2,a3….,an]:</p><p>a1&#x3D;a2^a3^a4……^an</p><p>a1^a2^a3……^an&#x3D;0</p><p>ax^[a1,a2,a3,…..an]&#x3D;ax</p><p>ax&#x3D;a1^a2….^an(without ax)</p><p>可知该题数组中的任何一个数都符合题目要求。</p><h2 id="B-Rising-Sand"><a href="#B-Rising-Sand" class="headerlink" title="B. Rising Sand"></a>B. Rising Sand</h2><p>Solution:</p><p><img src="https://s2.loli.net/2022/06/29/KbtNAFvISoCdhgf.png" alt="image-20220629134108909"></p><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs c++"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;bits/stdc++.h&gt;</span></span><br><br><span class="hljs-keyword">using</span> <span class="hljs-keyword">namespace</span> std;<br><br><span class="hljs-type">const</span> <span class="hljs-type">int</span> MAX = <span class="hljs-number">200007</span>;<br><span class="hljs-type">const</span> <span class="hljs-type">int</span> MOD = <span class="hljs-number">1000000007</span>;<br><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">solve</span><span class="hljs-params">()</span> </span>&#123;<br><span class="hljs-type">int</span> n, k;<br>cin &gt;&gt; n &gt;&gt; k;<br><span class="hljs-type">int</span> a[n];<br><span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; n; i++) &#123;<br>    cin &gt;&gt; a[i];<br>&#125;<br><span class="hljs-keyword">if</span> (k &gt; <span class="hljs-number">1</span>) &#123;<br>    <span class="hljs-type">int</span> res = <span class="hljs-number">0</span>;<br>    <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">1</span>; i &lt; n - <span class="hljs-number">1</span>; i++) &#123;<br>        res += (a[i] &gt; a[i - <span class="hljs-number">1</span>] + a[i + <span class="hljs-number">1</span>]);<br>    &#125;<br>    cout &lt;&lt; res &lt;&lt; <span class="hljs-string">&#x27;\n&#x27;</span>;<br>&#125;<br><span class="hljs-keyword">else</span> &#123;<br>    cout &lt;&lt; (n - <span class="hljs-number">1</span>) / <span class="hljs-number">2</span> &lt;&lt; <span class="hljs-string">&#x27;\n&#x27;</span>;<br>&#125;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>    ios::<span class="hljs-built_in">sync_with_stdio</span>(<span class="hljs-literal">false</span>);<br>    cin.<span class="hljs-built_in">tie</span>(<span class="hljs-literal">nullptr</span>);<br>    <span class="hljs-type">int</span> tt; cin &gt;&gt; tt; <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">1</span>; i &lt;= tt; i++) &#123;<span class="hljs-built_in">solve</span>();&#125;<br>    <span class="hljs-comment">// solve();</span><br>&#125;<br></code></pre></td></tr></table></figure>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>算法</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>常用git指令</title>
     <link href="/2022/06/28/%E5%B8%B8%E7%94%A8git%E6%8C%87%E4%BB%A4/"/>
     <url>/2022/06/28/%E5%B8%B8%E7%94%A8git%E6%8C%87%E4%BB%A4/</url>
