@@ -454,6 +454,19 @@ inline ThreadPool::~ThreadPool() {
 
 ## 禁用类的拷贝和移动
 
+**禁用拷贝**
+
+```cpp
+
+```
+
+**禁用移动**
+
+```cpp
+
+```
+
+
 ```cpp
 ClassName(const ClassName&) = delete;
 ClassName(ClassName&&) = delete;

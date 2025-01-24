@@ -13,9 +13,9 @@
   "obsidian-file-cleaner",
   "dataview",
   "obsidian-admonition",
-  "obsidian-image-toolkit",
   "recent-files-obsidian",
   "cm-chs-patch",
   "obsidian-vimrc-support",
-  "obsidian-textgenerator-plugin"
+  "obsidian-textgenerator-plugin",
+  "obsidian-image-toolkit"
 ]

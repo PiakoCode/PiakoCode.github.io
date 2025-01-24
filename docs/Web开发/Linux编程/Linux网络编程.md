@@ -1,4 +1,7 @@
-# Linux 网络编程
+
+[11.4 套接字接口 \| 深入理解计算机系统（CSAPP）](https://hansimov.gitbook.io/csapp/part3/ch11-network-programming/11.4-the-sockets-interface)
+
+![**使用流套接字的面向连接的通信**](https://docs.oracle.com/cd/E38902_01/html/E38880/figures/7099.png)
 
 
 应用程序使用socket进行通信的方式如下：
@@ -229,6 +232,77 @@ server端
 
 ***
 
+## send、recv、accept、connect的区别
+
+- `send` 和 `recv` 用于已连接的套接字，进行数据的发送和接收。
+- `accept` 用于服务器端，接受客户端的连接请求，并返回一个新的套接字。   
+- `connect` 用于客户端，主动连接到服务器。
+
+>[什么是已连接的socket](connect、listen和accept.md#什么是已连接的socket)
+
+### 1. `send`
+- **功能**: 用于将数据从应用程序发送到已连接的套接字。
+- **使用场景**: 通常用于TCP连接，发送数据到对端。
+- **原型**:
+  ```c
+  ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+  ```
+- **参数**:
+  - `sockfd`: 已连接的套接字描述符。
+  - `buf`: 指向要发送数据的缓冲区。
+  - `len`: 要发送的数据长度。
+  - `flags`: 发送标志，通常为0。
+- **返回值**: 成功时返回发送的字节数，失败时返回-1。
+
+### 2. `recv`
+- **功能**: 用于从已连接的套接字接收数据。
+- **使用场景**: 通常用于TCP连接，接收来自对端的数据。
+- **原型**:
+  ```c
+  ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+  ```
+- **参数**:
+  - `sockfd`: 已连接的套接字描述符。
+  - `buf`: 指向接收数据的缓冲区。
+  - `len`: 缓冲区的最大长度。
+  - `flags`: 接收标志，通常为0。
+- **返回值**: 成功时返回接收的字节数，失败时返回-1，连接关闭时返回0。
+
+### 3. `accept`
+- **功能**: 用于接受一个 incoming 连接请求，创建一个新的套接字用于与客户端通信。
+- **使用场景**: 通常用于服务器端，接受客户端的连接请求。
+- **原型**:
+  ```c
+  int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+  ```
+- **参数**:
+  - `sockfd`: 监听套接字描述符。
+  - `addr`: 指向存放客户端地址的结构体。
+  - `addrlen`: 客户端地址结构体的长度。
+- **返回值**: 成功时返回新的套接字描述符，失败时返回-1。
+
+### 4. `connect`
+- **功能**: 用于客户端主动连接到服务器。
+- **使用场景**: 通常用于客户端，连接到服务器。
+- **原型**:
+  ```c
+  int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+  ```
+- **参数**:
+  - `sockfd`: 套接字描述符。
+  - `addr`: 指向服务器地址的结构体。
+  - `addrlen`: 服务器地址结构体的长度。
+- **返回值**: 成功时返回0，失败时返回-1。
+
+### 总结
+- `send` 和 `recv` 用于已连接的套接字，进行数据的发送和接收。
+- `accept` 用于服务器端，接受客户端的连接请求，并返回一个新的套接字。
+- `connect` 用于客户端，主动连接到服务器。
+
+
+
+***
+
 ## server
 
 服务器端代码：
@@ -259,12 +333,12 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // 设置服务器地址和端口
+    // 设置本地地址和端口
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(PORT);
 
-    // 绑定套接字到服务器地址和端口
+    // 绑定套接字到本地地址和端口
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         perror("bind");
         exit(EXIT_FAILURE);
