@@ -57,6 +57,22 @@ shell中1&将STDERR和STDOUT的输出重定向到同一个管道
 
 按下 `Ctrl + Z` 键组合可以将正在运行的任务（前台任务）暂停，并将其切换到后台。这个操作通常称为挂起（suspend）。
 
+
+`disown` shell内建命令。是一个 shell 内建命令，用于将*后台作业*从当前 shell 的作业列表中移除。 这意味着，即使终端关闭，相关进程也不会收到挂起信号（SIGHUP），从而继续运行。
+
+比如
+```bash
+dolphin . &
+disown
+```
+
+
+`nohup`（no hang up）命令用于运行程序时忽略挂起信号（SIGHUP），即使终端关闭，程序也会继续运行。 它会将程序的标准输出和标准错误输出重定向到 `nohup.out` 文件，除非你指定了其他输出文件。
+
+```bash
+nohup dolphin . &
+```
+
 [Linux中的管道与连接符号 - 知乎](https://zhuanlan.zhihu.com/p/223681357)
 
 **获得两个文件之间的相对路径**
