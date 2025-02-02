@@ -19,6 +19,5 @@
   "userIgnoreFilters": [
     "javascripts/"
   ],
-  "showRibbon": true,
   "trashOption": "system"
 }
