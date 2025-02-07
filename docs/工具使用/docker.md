@@ -103,6 +103,25 @@ apt install -y curl sudo ssh vim fish neofetch tree make git gcc gdb build-essen
 
 ```
 
+修改默认shell
+```shell
+chsh -s $(which fish)
+```
+
+
+debian **仅docker容器**
+
+参见： [Debian - USTC Mirror Help](https://mirrors.ustc.edu.cn/help/debian.html#__tabbed_1_2)
+
+```shell
+sudo sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+```
+
+非docker容器
+
+```shell
+sudo sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+```
 
 Dockerfile
 ```
