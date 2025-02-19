@@ -154,7 +154,60 @@ git checkout -b [branch_name] [tag_name]
 
 
 
-**.gitignore**
+## **.gitignore**
+
+
+   - **忽略单个文件**：指定文件名或相对路径。
+     ```
+     example.txt
+     ```
+   - **忽略整个目录**：在目录名称后加 `/`。
+     ```
+     logs/
+     ```
+   - **忽略特定扩展名的文件**：使用通配符。
+     ```
+     *.log
+     ```
+   - **排除特定文件**：使用 `!` 来取消忽略。
+     ```
+     !important.log
+     ```
+   
+*重要提示*
+
+- `.gitignore` 文件只能忽略那些还未被 Git 跟踪的文件。如果某个文件已经被 Git 跟踪了，即使添加了 `.gitignore` 规则，它仍然会被跟踪。要忽略已跟踪的文件，需要先从 Git 中移除该文件。
+
+  ```bash
+  git rm --cached <file>
+  ```
+
+
+常见的 `.gitignore` 示例：
+
+- 忽略所有的编译文件（比如 C++ 中的可执行文件和中间文件）：
+  ```gitignore
+  *.o
+  *.out
+  *.exe
+  ```
+
+- 忽略所有的日志文件：
+  ```gitignore
+  *.log
+  ```
+
+- 忽略某个特定文件夹：
+  ```gitignore
+  temp/
+  ```
+
+- 忽略所有的环境配置文件：
+  ```gitignore
+  .env
+  ```
+
+
 
 ```
 # 忽略所有文件，除了.cpp、.txt文件、makefile以及.gitignore
@@ -221,3 +274,16 @@ OpenSSL SSL_read: Connection was aborted, errno 10054
 ---
 
 如果无法正常验证身份, 试试使用*ssh链接*而非https链接
+
+
+
+## git commit 规范
+
+[Commit message 和 Change log 编写指南 - 阮一峰的网络日志](https://www.ruanyifeng.com/blog/2016/01/commit_message_change_log.html)
+
+[way/appendixs/wiki/git-commit.md at master · o-w-o/way · GitHub](https://github.com/o-w-o/way/blob/master/appendixs/wiki/git-commit.md)
+
+
+相关工具：
+
+https://github.com/commitizen/cz-cli

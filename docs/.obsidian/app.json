@@ -19,5 +19,5 @@
   "userIgnoreFilters": [
     "javascripts/"
   ],
-  "trashOption": "system"
+  "trashOption": "local"
 }
