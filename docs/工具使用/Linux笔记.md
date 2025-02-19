@@ -1,5 +1,13 @@
 # Linux笔记
 
+**文件权限控制**
+
+```shell
+chmod 755 /path/to/file
+chown ${username} /path/to/file
+```
+
+
 
 **正常解压gbk编码格式的文件**
 

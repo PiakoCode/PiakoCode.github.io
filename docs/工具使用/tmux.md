@@ -68,3 +68,53 @@ bind-key % split-window -h -c \"#{pane_current_path}\"
 bind-key '\"' split-window -c \"#{pane_current_path}\"
 " > .tmux.conf
 ```
+
+
+`.tmux.conf`
+
+```text
+# 设置前缀键为 Ctrl + a
+unbind C-b
+set-option -g prefix C-a
+bind-key C-a send-prefix
+
+# 面板导航快捷键（Vim 风格方向键）
+bind h select-pane -L
+bind j select-pane -D
+bind k select-pane -U
+bind l select-pane -R
+
+# 支持鼠标点击
+set-option -g mouse on
+
+# 在当前目录分屏
+bind-key c new-window -c "#{pane_current_path}"
+bind-key % split-window -h -c "#{pane_current_path}"
+bind-key '"' split-window -c "#{pane_current_path}"
+
+# 启用真彩色支持（确保终端支持 24-bit 颜色）
+set -g default-terminal "tmux-256color"
+set -ag terminal-overrides ",xterm-256color:RGB"
+
+# 启用状态栏
+set-option -g status on
+
+# 自动调整窗格大小
+setw -g aggressive-resize on
+
+set -wg monitor-activity on # 非当前窗口有内容更新时在状态栏通知
+set -g message-style "bg=#202529, fg=#91A8BA" # 指定消息通知的前景、后景色
+
+# 设置渐变效果的状态栏背景颜色
+set-option -g status-bg '#2E3440'   # 背景色
+set-option -g status-fg '#D8DEE9'   # 文字颜色
+
+
+# 设置状态栏内容
+set -g status-left "#[fg=#81A1C1][#S] "
+set -g status-right "#[fg=#88C0D0]%A %H:%M | #[fg=#A3BE8C]%Y-%m-%d "
+# 窗口状态
+set -g window-status-format "#[fg=white] #I #W "
+set -g window-status-current-format "#[fg=white] [#I] #W "
+
+```
