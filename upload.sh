@@ -9,7 +9,7 @@ BLUE='\033[1;34m'  # 蓝色
 GREEN='\033[0;32m' # 绿色
 NC='\033[0m'       # 恢复默认颜色
 
-NOTE_PATH='/home/piako/Documents/markdown-note'
+NOTE_PATH="$HOME/Data/markdown-note"
 
 cd ${NOTE_PATH} || exit
 
