@@ -172,6 +172,24 @@ netstat命令用于显示网络连接和路由表信息。
 
 `tealdeer` [tealdeer(tldr的rust客户端，速度更快)](https://github.com/dbrgn/tealdeer)
 
+`dwebp` 将`webp`图片转换为`png`格式
+
+```shell
+dwebp input.webp -o output.png
+```
+
+`notify-send` 使用当前桌面环境的消息系统发送消息
+
+```shell
+notify-send "Test" "This is a test"
+
+notify-send "Test" --icon=google-chrome --app-name="Google Chrome"
+
+notify-send -t 5000 "Test" "This is a test"
+
+```
+
+### 测试
 
 `hyperfine` benchmark工具 
 
@@ -224,6 +242,7 @@ sudo stackcollapse-perf out.perf > out.folded
 # 生成svg图片
 sudo flamegraph.pl out.folded > {name}.svg
 ```
+
 
 *快速bash脚本*
 
@@ -292,3 +311,72 @@ mpv播放器
 
 启用硬件解码(自动选择解码方式)
 `--hwdec=auto`
+
+
+## anacron
+
+`anacron` 是 Linux 系统中一个用于在不连续运行的系统上执行定期任务的工具。与 `cron` 不同，`cron` 只会在指定的时间点运行任务，`anacron` 则会在系统启动时检查是否错过了任务，并在系统开启时补上。
+
+### `anacron` 与 `cron` 的区别
+
+- `cron` 是基于时间的调度器，它依赖于系统的时间和日期，假如系统在某个预定的时间没有运行，任务会被错过。
+- `anacron` 适用于那些不是持续运行的系统（比如笔记本、台式机等），如果系统没有在预定时间运行，`anacron` 会确保任务在下次开机后被执行。
+
+### 1. 配置文件
+
+`anacron` 的配置文件通常是 `/etc/anacrontab`。你可以在这里定义定期任务。文件的格式如下：
+
+```bash
+# period   delay   job-identifier   command
+# period: 任务周期（天数）
+# delay: 任务延迟（分钟），即任务开始执行前的等待时间
+# job-identifier: 任务的唯一标识符
+# command: 执行的命令
+```
+
+### 2. `/etc/anacrontab` 文件的结构
+
+示例 `/etc/anacrontab` 文件：
+
+```bash
+# /etc/anacrontab: configuration file for anacron
+
+# period   delay   job-identifier   command
+1       5       cron.daily         run-parts /etc/cron.daily
+7       10      cron.weekly        run-parts /etc/cron.weekly
+30      15      cron.monthly       run-parts /etc/cron.monthly
+```
+
+- `1 5 cron.daily run-parts /etc/cron.daily`：每天运行 `/etc/cron.daily` 目录下的所有脚本，执行时间延迟 5 分钟。
+- `7 10 cron.weekly run-parts /etc/cron.weekly`：每周运行 `/etc/cron.weekly` 目录下的所有脚本，执行时间延迟 10 分钟。
+- `30 15 cron.monthly run-parts /etc/cron.monthly`：每月运行 `/etc/cron.monthly` 目录下的所有脚本，执行时间延迟 15 分钟。
+
+### 3. 配置周期
+
+- **1**：表示任务每 1 天执行一次。
+- **7**：表示任务每 7 天执行一次。
+- **30**：表示任务每 30 天执行一次。
+
+### 4. 启动任务
+
+当系统启动时，`anacron` 会检查任务是否已按预定时间执行。如果没有，它会根据 `anacrontab` 中的配置立即执行该任务。你不需要像 `cron` 一样确保任务在指定时间前运行，只需要保证系统启动时执行。
+
+### 5. 手动执行任务
+
+你可以通过命令手动执行 `anacron` 任务：
+
+```bash
+sudo anacron -s
+```
+
+`-s` 参数是指手动运行 `anacron`，这将执行所有错过的任务。注意，`anacron` 需要有系统时间与系统启动时间的对比，因此通常会自动在系统启动时执行。
+
+### 6. 检查执行情况
+
+`anacron` 会在 `/var/spool/anacron` 目录下记录每个任务的上次执行时间。你可以查看这个目录下的文件来确认任务是否成功执行。
+
+### 总结
+
+- `anacron` 适用于那些不连续运行的系统，通过启动时检查是否错过了任务并补上。
+- 配置文件 `/etc/anacrontab` 中定义了任务的周期和执行命令。
+- `anacron` 会自动在系统启动时运行，因此不需要像 `cron` 那样保证系统一直运行。
