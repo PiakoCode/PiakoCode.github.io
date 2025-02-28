@@ -49,9 +49,18 @@ crontab -e
 crontab -l
 ```
 
+
+***
+
 shell中1&将STDERR和STDOUT的输出重定向到同一个管道
 
 `chattr` 修改文件属性
+
+使某文件/文件夹不可被修改/删除
+```shell
+chattr +i path/to/file_or_directory
+```
+
 `lsattr` 查看文件属性
 
 **任务管理**

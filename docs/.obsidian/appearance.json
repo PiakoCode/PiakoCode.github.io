@@ -1,8 +1,8 @@
 {
   "accentColor": "",
   "cssTheme": "Things",
-  "textFontFamily": "Maple Mono SC NF",
-  "interfaceFontFamily": "Maple Mono SC NF",
+  "textFontFamily": "FiraCode Nerd Font Mono,Maple Mono SC NF",
+  "interfaceFontFamily": "Arial",
   "monospaceFontFamily": "FiraCode Nerd Font Mono,Maple Mono SC NF",
   "baseFontSize": 15,
   "showViewHeader": true,
