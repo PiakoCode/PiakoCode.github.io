@@ -495,3 +495,199 @@ ClassName &operator=(ClassName &&) = delete;
   }
 ```
 
+# SkipList
+
+```cpp
+#pragma once
+#include <iostream>
+#include <ostream>
+#include <type_traits>
+#include <vector>
+#ifndef SKIPLIST_H
+#define SKIPLIST_H
+
+#include <cstddef>
+#include "utils.h"
+
+/**
+ * @brief 
+ * 
+ * @tparam T key
+ * @tparam U value
+ */
+template<typename T>
+class SkipListNode {
+public:
+    SkipListNode() = delete;
+    // 跳表节点构造函数
+    SkipListNode<T>(T value, size_t level);
+
+    ~SkipListNode() = default;
+
+    DISALLOW_COPY_AND_MOVE(SkipListNode);
+
+    T set_value(T value);
+    T get_value() const {
+        return value;
+    }
+    std::vector<SkipListNode<T> *> forward; // 跳表节点的前向指针数组
+private:
+    T value;
+};
+
+/**
+ * @brief 跳表节点构造函数
+ *
+ * @tparam T
+ */
+template<typename T>
+SkipListNode<T>::SkipListNode(T value, size_t level) {
+    this->value = value;
+    this->forward.resize(level, nullptr);
+}
+
+template<typename T>
+class SkipList {
+public:
+    SkipList(int max_level, float p);
+    ~SkipList();
+    SkipListNode<T> *search(T value);
+    void insert(T value);
+    void remove(T value);
+
+    DISALLOW_COPY_AND_MOVE(SkipList);
+
+private:
+    size_t random_level();
+
+private:
+    size_t max_level_{0};  // 跳表的最大层数
+    float p_{0.5};         // 跳表的概率
+    int current_level_{0}; // 当前跳表的层数
+
+    SkipListNode<T> *head_; // 跳表的头节点
+};
+
+template<typename T>
+SkipList<T>::SkipList(int max_level, float p) : max_level_(max_level), p_(p) {
+    head_ = new SkipListNode<T>(-1, max_level_);
+}
+
+template<typename T>
+SkipList<T>::~SkipList() {
+
+    SkipListNode<T> *current = head_;
+    SkipListNode<T> *next = nullptr;
+    
+    // 遍历并删除所有节点
+    while (current != nullptr) {
+        next = current->forward[0];
+        delete current;
+        current = next;
+    }
+    
+    head_ = nullptr;
+}
+
+template<typename T>
+void SkipList<T>::insert(T value) {
+
+    std::vector<SkipListNode<T> *> update(max_level_, nullptr);
+    SkipListNode<T> *current = head_;
+
+    // 从最高层开始查找
+    for (int i = current_level_ - 1; i >= 0; i--) {
+
+        while (current->forward[i] && current->forward[i]->get_value() < value) {
+            // 找到当前层中大于value的节点
+            current = current->forward[i];
+        }
+        // 记录当前层中大于value的节点
+        update[i] = current;
+    }
+
+    // 随机生成一个层数
+    int level = random_level();
+
+    // 如果随机生成的层数大于当前层数，则更新当前层数
+    if (level > current_level_) {
+        for (int i = current_level_; i < level; i++) {
+            update[i] = head_;
+        }
+        current_level_ = level;
+    }
+
+    // 创建新节点
+    SkipListNode<T> *new_node = new SkipListNode<T>(value, level);
+    // 将新节点插入到跳表中
+    for (int i = 0; i < level; i++) {
+        new_node->forward[i] = update[i]->forward[i];
+        update[i]->forward[i] = new_node;
+    }
+
+    std::cout << "插入节点" << value << "成功" << std::endl;
+}
+
+template<typename T>
+void SkipList<T>::remove(T value) {
+    std::vector<SkipListNode<T> *> update(max_level_, nullptr);
+    SkipListNode<T> *current = head_;
+
+    // 从最高层开始查找
+    for (int i = current_level_ - 1; i >= 0; i--) {
+        while (current->forward[i] && current->forward[i]->get_value() < value) {
+            current = current->forward[i];
+        }
+        update[i] = current;
+    }
+
+    current = current->forward[0];
+
+    if (current && current->get_value() == value) {
+        for (int i = 0; i < current_level_; i++) {
+            if (update[i]->forward[i] != current) {
+                break;
+            }
+            update[i]->forward[i] = current->forward[i];
+        }
+    }
+
+    // 删除空层
+    while (current_level_ > 1 && !head_->forward[current_level_ - 1]) {
+        current_level_--;
+    }
+
+    std::cout << "删除节点" << value << "成功" << std::endl;
+}
+
+
+template<typename T>
+SkipListNode<T> *SkipList<T>::search(T value) {
+    SkipListNode<T> *current = head_;
+
+    for (int i = current_level_ - 1; i >= 0; i--) {
+        while (current->forward[i] && current->forward[i]->get_value() < value) {
+            current = current->forward[i];
+        }
+    }
+
+    current = current->forward[0];
+
+    if (current && current->get_value() == value) {
+        return current;
+    }
+
+    return nullptr;
+}
+
+template<typename T>
+size_t SkipList<T>::random_level() {
+    size_t level = 1;
+    while (rand() < RAND_MAX * p_ && level < max_level_) {
+        level++;
+    }
+    return level;
+}
+
+#endif
+```

@@ -206,9 +206,10 @@ notify-send -t 5000 "Test" "This is a test"
 hyperfine --prepare zsh --warmup 10 --min-runs=1000 './path/to/program > /dev/null'
 ```
 
-`valgrind` C++应用内存泄露检查
+`valgrind` C++应用内存、并发问题检查
 
 ```shell
+valgrind --leak-check=full --show-leak-kinds=all ./my_program # 检查内存泄露问题
 valgrind --tool=helgrind ./my_program # 检查并发问题
 ```
 
