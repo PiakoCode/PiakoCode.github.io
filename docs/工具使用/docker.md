@@ -123,7 +123,14 @@ sudo sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/deb
 sudo sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
 ```
 
-Dockerfile
+
+## Dockerfile
+
+
+Dockerfile示例
+
+> 构建Ubuntu镜像
+
 ```
 # Set the base image 
 FROM ubuntu:latest
@@ -140,7 +147,7 @@ RUN apt upgrade -y
 RUN apt install -y curl sudo ssh vim fish neofetch tree make git gcc gdb build-essential htop wget python3 tmux
 ```
 
-## Dockerfile
+
 
 ```shell
 docker build --tag <image-name>:<image-version> -f /path/to/Dockefile .
