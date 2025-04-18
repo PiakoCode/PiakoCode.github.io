@@ -131,3 +131,6 @@ alias vi='nvim'
 alias vim='nvim'
 
 ```
+
+
+[zsh 安装与配置，使用 oh-my-zsh 美化终端 \| Leehow的小站](https://www.haoyep.com/posts/zsh-config-oh-my-zsh/)

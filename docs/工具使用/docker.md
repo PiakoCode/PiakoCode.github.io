@@ -152,3 +152,10 @@ RUN apt install -y curl sudo ssh vim fish neofetch tree make git gcc gdb build-e
 ```shell
 docker build --tag <image-name>:<image-version> -f /path/to/Dockefile .
 ```
+
+
+## 国内linux环境相关配置
+
+[zsh 安装与配置，使用 oh-my-zsh 美化终端 \| Leehow的小站](https://www.haoyep.com/posts/zsh-config-oh-my-zsh/)
+
+
