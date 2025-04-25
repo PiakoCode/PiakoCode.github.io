@@ -158,3 +158,4 @@ set -g window-status-current-format "#[fg=white] [#I] #W "
 - `前缀 + :`：进入命令行模式（输入 tmux 命令）。
 
 
+[Tmux 使用教程 - 阮一峰的网络日志](https://www.ruanyifeng.com/blog/2019/10/tmux.html)

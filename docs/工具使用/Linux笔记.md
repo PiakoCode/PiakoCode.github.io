@@ -390,3 +390,20 @@ sudo anacron -s
 - `anacron` 适用于那些不连续运行的系统，通过启动时检查是否错过了任务并补上。
 - 配置文件 `/etc/anacrontab` 中定义了任务的周期和执行命令。
 - `anacron` 会自动在系统启动时运行，因此不需要像 `cron` 那样保证系统一直运行。
+
+## 远程服务器
+
+ssh连接服务器，中文目录、文件显示乱码
+
+添加参数
+
+```shell
+ssh -o SendEnv=LANG user@server
+```
+
+或者在 `~/.ssh/config` 中添加
+
+```config
+Host *
+  SendEnv LANG LC_*
+```
