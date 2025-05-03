@@ -198,6 +198,16 @@ notify-send -t 5000 "Test" "This is a test"
 
 ```
 
+## 命令行查看文件
+
+csv
+
+```shell
+column -s, -t file.csv | less -S
+```
+
+
+
 ### 测试
 
 `hyperfine` benchmark工具 
