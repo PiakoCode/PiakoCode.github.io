@@ -1,4 +1,4 @@
-# Linux笔记
+mopidy# Linux笔记
 
 **文件权限控制**
 

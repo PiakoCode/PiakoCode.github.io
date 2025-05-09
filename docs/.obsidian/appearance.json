@@ -1,9 +1,9 @@
 {
   "accentColor": "",
   "cssTheme": "Things",
-  "textFontFamily": "FiraCode Nerd Font Mono,Maple Mono SC NF",
+  "textFontFamily": "Maple Mono NF SC,FiraCode Nerd Font Mono,Microsoft YaHei",
   "interfaceFontFamily": "Arial",
-  "monospaceFontFamily": "FiraCode Nerd Font Mono,Maple Mono SC NF",
+  "monospaceFontFamily": "Maple Mono NF SC,FiraCode Nerd Font Mono",
   "baseFontSize": 15,
   "showViewHeader": true,
   "nativeMenus": false,
