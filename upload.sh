@@ -31,4 +31,9 @@ git push github main
 echo -e "\n${BLUE}git push github-page${NC}\n"
 git push github-page main
 
+echo -e "\n${BLUE}git push codeberg${NC}\n"
+git push codeberg main
+
+
+
 echo -e "${GREEN}-----Push Complete!-----\n${NC}"
