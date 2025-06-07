@@ -1,0 +1,3 @@
+# Linux 内核结构图
+
+![](Picture/1409D755CBA2A86D7A7B70210BA1AD38.jpg)
