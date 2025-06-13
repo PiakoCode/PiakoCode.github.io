@@ -256,4 +256,4 @@ xxx NOT BETWEEN min AND max
 CREATE DATABASE your_database_name CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-[linux安装mysql](../编程语言/Java/linux安装mysql.md)
+[linux安装mysql](../Web开发/linux安装mysql.md)

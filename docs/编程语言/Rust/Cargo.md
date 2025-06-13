@@ -41,6 +41,7 @@ cargo doc    # 生成项目文档
 ```
 
 >[!note]
+>
 >在项目开头(如lib.rs), 添加`#![deny(missing_docs)]`, 强制所有公共项目都有文档注释
 >ref: [Documentation - Rust API Guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 ## Package Layout

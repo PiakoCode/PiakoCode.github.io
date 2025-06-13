@@ -33,7 +33,7 @@
 
 ## Week 5
 #### 10.28
-- Linux网络编程初步(socket bind) [Linux网络编程](../Linux编程/Linux网络编程.md)
+- Linux网络编程初步(socket bind) [Linux网络编程](../Linux/Linux网络编程.md)
 - rCore Lab1
 - Kaggle Titanic competitions(Kaggle基本使用)
 
