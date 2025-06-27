@@ -15,7 +15,7 @@ chown ${username} /path/to/file
 unzip -O gbk path/to/archive1.zip path/to/archive2.zip
 ```
 
-**定时执行脚本**
+**crontab 定时执行脚本**
 
 `cronie` 使用 `cronie.service`
 
@@ -49,6 +49,49 @@ crontab -e
 crontab -l
 ```
 
+## openssl
+
+**产生随机序列**
+
+
+生成十六进制的随机序列
+
+```shell
+openssl rand -hex 10 # 为序列长度
+```
+
+结果:
+
+```text
+c5615b731705563b0b5b
+```
+
+
+生成Base64编码的随机字符串
+
+```shell
+openssl rand -base64 32
+```
+
+结果:
+
+```text
+rDJ81m4vz9t7AHqbGwoUqsEWl5RondxGOGcx1DAx7g0=
+```
+
+
+生成字母数字随机字符串
+
+```bash
+openssl rand -base64 24 | tr -dc 'a-zA-Z0-9'
+```
+
+结果:
+
+```shell
+vBI6BZmKEJVZa3An01aJlLqDI7WM5Ef
+```
+
 
 ***
 
@@ -63,7 +106,7 @@ chattr +i path/to/file_or_directory
 
 `lsattr` 查看文件属性
 
-**任务管理**
+## 任务管理
 
 `jobs` 查看终端中的任务列表（在后台运行的任务）
 
