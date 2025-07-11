@@ -6,8 +6,8 @@
 ```shell
 yay -S 
 
-hyprland-git 
-waybar-hyprland-git 
+hyprland
+waybar
 network-manager-applet 
 blueman
 xdg-desktop-portal-hyprland # 屏幕共享、截图需要
