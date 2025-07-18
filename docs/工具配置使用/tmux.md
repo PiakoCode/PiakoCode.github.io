@@ -1,4 +1,4 @@
-# Tmux
+z# Tmux
 
 ## 基本操作
 
@@ -39,12 +39,29 @@ tmux set mouse on
 ```
 
 
-切换会话
+切换分屏
 ```shell
 ctrl + b -> 方向键
 ```
 
+创建新窗口
 
+```shell
+ctrl + b -> c
+```
+
+
+切换到下个窗口
+
+```shell
+ctrl + b -> n
+```
+
+查看快捷键
+
+```shell
+ctrl + b -> ?
+```
 
 ## 复制模式(vim)
 

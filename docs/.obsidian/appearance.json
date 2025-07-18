@@ -7,6 +7,6 @@
   "baseFontSize": 16,
   "showViewHeader": true,
   "nativeMenus": false,
-  "theme": "system",
+  "theme": "obsidian",
   "showRibbon": true
 }
