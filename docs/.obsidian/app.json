@@ -15,7 +15,7 @@
   "showLineNumber": false,
   "promptDelete": false,
   "propertiesInDocument": "visible",
-  "strictLineBreaks": true,
+  "strictLineBreaks": false,
   "userIgnoreFilters": [
     "javascripts/"
   ],
