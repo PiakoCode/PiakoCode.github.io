@@ -460,3 +460,31 @@ ssh -o SendEnv=LANG user@server
 Host *
   SendEnv LANG LC_*
 ```
+
+
+## Systemd
+
+
+### 用户级配置
+
+**环境变量**
+
+1. 创建或编辑` ~/.config/environment.d/*.conf`
+
+```shell
+mkdir -p ~/.config/environment.d
+nano ~/.config/environment.d/99-my-vars.conf
+```
+
+2. 写入环境变量
+
+```shell
+PATH=/home/username/my_scripts:${PATH}
+JAVA_HOME=/usr/lib/jvm/java-11-openjdk
+```
+
+3. 然后运行 `systemctl --user daemon-reload`
+
+## 多显卡配置
+
+[Arch Linux 多显卡切换配置 \| 林伟源的技术博客](https://linweiyuan.github.io/2023/09/23/Arch-Linux-%E5%A4%9A%E6%98%BE%E5%8D%A1%E5%88%87%E6%8D%A2%E9%85%8D%E7%BD%AE.html)

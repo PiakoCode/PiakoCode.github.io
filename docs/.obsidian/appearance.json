@@ -1,12 +1,12 @@
 {
   "accentColor": "",
-  "cssTheme": "Catppuccin",
+  "cssTheme": "Minimal",
   "textFontFamily": "Maple Mono NF SC,FiraCode Nerd Font Mono,Microsoft YaHei",
   "interfaceFontFamily": "Arial",
   "monospaceFontFamily": "Maple Mono NF SC,FiraCode Nerd Font Mono",
   "baseFontSize": 16,
   "showViewHeader": true,
   "nativeMenus": false,
-  "theme": "obsidian",
+  "theme": "system",
   "showRibbon": true
 }

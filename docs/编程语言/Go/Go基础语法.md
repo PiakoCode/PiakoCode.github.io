@@ -859,6 +859,14 @@ func main() {
 }
 ```
 
+## 函数、结构体、结构体成员可见性
+
+Go语言没有像其它语言一样有`public`、`protected`、`private`等访问控制修饰符，它是通过**首字母大小写**来控制可见性的，
+
+如果定义的常量、变量、类型、接口、结构、函数等的名称是大写字母开头表示能被其它包访问或调用（相当于`public`），非大写开头就只能在包内使用（相当于`private`，变量或常量也可以下划线开头）
+
+
+
 ## Stringer
 
 [`fmt`](https://go-zh.org/pkg/fmt/) 包中定义的 [`Stringer`](https://go-zh.org/pkg/fmt/#Stringer) 是最普遍的接口之一。

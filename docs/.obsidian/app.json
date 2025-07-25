@@ -12,7 +12,7 @@
   "showUnsupportedFiles": false,
   "showIndentGuide": true,
   "rightToLeft": false,
-  "showLineNumber": false,
+  "showLineNumber": true,
   "promptDelete": false,
   "propertiesInDocument": "visible",
   "strictLineBreaks": false,

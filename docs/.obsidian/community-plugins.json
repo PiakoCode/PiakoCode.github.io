@@ -1,12 +1,9 @@
 [
   "obsidian-style-settings",
   "templater-obsidian",
-  "table-editor-obsidian",
   "editing-toolbar",
   "obsidian-auto-link-title",
   "find-unlinked-files",
-  "obsidian-daily-stats",
-  "obsidian-html-plugin",
   "editor-width-slider",
   "obsidian-hover-editor",
   "file-explorer-note-count",
@@ -15,7 +12,5 @@
   "obsidian-admonition",
   "recent-files-obsidian",
   "cm-chs-patch",
-  "obsidian-vimrc-support",
-  "obsidian-textgenerator-plugin",
-  "obsidian-image-toolkit"
+  "table-editor-obsidian"
 ]
