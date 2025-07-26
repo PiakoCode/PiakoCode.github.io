@@ -1,5 +1,5 @@
 {
-  "showInlineTitle": false,
+  "showInlineTitle": true,
   "attachmentFolderPath": "./Picture",
   "newLinkFormat": "relative",
   "alwaysUpdateLinks": true,
