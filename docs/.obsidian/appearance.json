@@ -5,7 +5,7 @@
   "interfaceFontFamily": "Arial,Source Code Pro",
   "monospaceFontFamily": "Maple Mono NF SC,FiraCode Nerd Font Mono",
   "baseFontSize": 16,
-  "showViewHeader": false,
+  "showViewHeader": true,
   "nativeMenus": false,
   "theme": "obsidian",
   "showRibbon": true,

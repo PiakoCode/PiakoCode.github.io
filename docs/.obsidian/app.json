@@ -1,5 +1,5 @@
 {
-  "showInlineTitle": true,
+  "showInlineTitle": false,
   "attachmentFolderPath": "./Picture",
   "newLinkFormat": "relative",
   "alwaysUpdateLinks": true,
@@ -10,9 +10,9 @@
   "spellcheck": false,
   "readableLineLength": true,
   "showUnsupportedFiles": false,
-  "showIndentGuide": true,
+  "showIndentGuide": false,
   "rightToLeft": false,
-  "showLineNumber": true,
+  "showLineNumber": false,
   "promptDelete": false,
   "propertiesInDocument": "visible",
   "strictLineBreaks": false,

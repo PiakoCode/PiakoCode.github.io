@@ -39,3 +39,22 @@ fmt.Print("\b\n\033[?25h") // 恢复显示光标
 ```
 
 ![[Picture/Peek 2023-07-06 14-17.gif]]
+
+
+获取当前时间，并转换为字符串
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+    now := time.Now()
+    formattedTime := now.Format("2006-01-02 15:04:05")
+    fmt.Println("当前时间：", formattedTime)
+}
+
+```

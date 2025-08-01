@@ -488,3 +488,16 @@ JAVA_HOME=/usr/lib/jvm/java-11-openjdk
 ## 多显卡配置
 
 [Arch Linux 多显卡切换配置 \| 林伟源的技术博客](https://linweiyuan.github.io/2023/09/23/Arch-Linux-%E5%A4%9A%E6%98%BE%E5%8D%A1%E5%88%87%E6%8D%A2%E9%85%8D%E7%BD%AE.html)
+
+
+## vim/nvim
+
+`vim -` 从标准输入中读取
+
+```bash
+ls -l | nvim -
+```
+
+`vim -R`只读模式
+
+`nvim +Man!`Neovim 有专门的 Man! 命令优化手册阅读体验
