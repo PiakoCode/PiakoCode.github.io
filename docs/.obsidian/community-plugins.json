@@ -1,16 +1,11 @@
 [
   "obsidian-style-settings",
-  "templater-obsidian",
-  "editing-toolbar",
   "obsidian-auto-link-title",
   "find-unlinked-files",
-  "editor-width-slider",
-  "obsidian-hover-editor",
+  "recent-files-obsidian",
   "file-explorer-note-count",
   "obsidian-file-cleaner",
   "dataview",
-  "obsidian-admonition",
-  "recent-files-obsidian",
-  "cm-chs-patch",
-  "table-editor-obsidian"
+  "table-editor-obsidian",
+  "obsidian-hover-editor"
 ]
