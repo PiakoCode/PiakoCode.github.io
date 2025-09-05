@@ -198,11 +198,11 @@ DROP INDEX 索引名 FROM 表名;
 
 
 
-![](../Algorithm/Picture/Pasted%20image%2020230129213623.png)
+![](../../Algorithm/Picture/Pasted%20image%2020230129213623.png)
 
 MySQL 中没有布尔类型，`AND` 的运算结果是 `1`, `0`, 或者 `NULL`。
-![](../Algorithm/Picture/Pasted%20image%2020230129215516.png)
-![](../Algorithm/Picture/Pasted%20image%2020230129215457.png)
+![](../../Algorithm/Picture/Pasted%20image%2020230129215516.png)
+![](../../Algorithm/Picture/Pasted%20image%2020230129215457.png)
 ```SQL
 1 > NULL > 0
 
@@ -231,7 +231,7 @@ SELECT (1 OR 0) AND 0;
 
 
 `IN` 运算符用来检查一个字段或值是否包含在一个集合中，如果值包含在集合中返回 `1`，否则返回 `0`。
-![](../Algorithm/Picture/Pasted%20image%2020230129221814.png)
+![](../../Algorithm/Picture/Pasted%20image%2020230129221814.png)
 
 `NOT IN` 和 [`IN` 用法](https://www.sjkjc.com/mysql/in/)几乎一样，只是在 `IN` 前面添加一个 `NOT` 关键字，`IN` 的否定操作符。
 
@@ -256,4 +256,4 @@ xxx NOT BETWEEN min AND max
 CREATE DATABASE your_database_name CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-[linux安装mysql](../Web开发/linux安装mysql.md)
+[linux安装mysql](../../Web开发/linux安装mysql.md)
