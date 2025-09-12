@@ -34,12 +34,10 @@ sudo podman run --name dede debian:latest
 
 运行容器
 
+
 ```shell
 podman start dede
+podman exec --interactive --tty dede bash
 ```
 
-或
-
-```shell
-podman run -it --name dede debian:latest /bin/bash
-```
+> 运行不要使用 `sudo`
