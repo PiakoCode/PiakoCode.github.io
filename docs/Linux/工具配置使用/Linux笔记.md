@@ -57,7 +57,7 @@ crontab -l
 生成十六进制的随机序列
 
 ```shell
-openssl rand -hex 10 # 为序列长度
+openssl rand -hex 10 # 长度为10个*字节*
 ```
 
 结果:
@@ -92,6 +92,24 @@ openssl rand -base64 24 | tr -dc 'a-zA-Z0-9'
 vBI6BZmKEJVZa3An01aJlLqDI7WM5Ef
 ```
 
+**其他生成随机字符串方式**
+
+生成10位纯数字：
+    
+```shell
+tr -cd '0-9' < /dev/urandom | head -c 10; echo
+```
+    
+`tr -cd '0-9'`: 只保留数字，删掉其他字符。
+        
+`head -c 10`: 截取前10个字符。
+        
+生成8位十六进制数：
+
+```shell
+tr -cd 'a-f0-9' < /dev/urandom | head -c 8; echo
+```
+    
 
 ***
 
