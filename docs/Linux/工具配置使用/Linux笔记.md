@@ -519,3 +519,12 @@ ls -l | nvim -
 `vim -R`只读模式
 
 `nvim +Man!`Neovim 有专门的 Man! 命令优化手册阅读体验
+
+
+## python
+
+`python3 -m http.server 8000`
+
+将当前文件夹变为网页服务器，提供文件分享功能
+
+![](Picture/Pasted%20image%2020260216194950.png)

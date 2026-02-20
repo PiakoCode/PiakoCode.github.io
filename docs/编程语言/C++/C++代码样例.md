@@ -457,7 +457,7 @@ inline ThreadPool::~ThreadPool() {
 **禁用拷贝(赋值)**
 ```cpp
 // 禁止复制
-#define DISALLOW_ASSIGN(ClassName)         \
+#define DISALLOW_COPY(ClassName)         \
     ClassName(const ClassName &) = delete; \
     ClassName &operator=(const ClassName &) = delete
 ```
