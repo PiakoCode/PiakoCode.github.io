@@ -584,3 +584,20 @@ ls -l | nvim -
 将当前文件夹变为网页服务器，提供文件分享功能
 
 ![](Picture/Pasted%20image%2020260216194950.png)
+
+## 内核模块
+
+#Linux游戏
+
+[内核模块](https://wiki.archlinuxcn.org/wiki/%E5%86%85%E6%A0%B8%E6%A8%A1%E5%9D%97#systemd)
+
+[ntsync - Wine - ArchWiki](https://wiki.archlinux.org/title/Wine#NTSync)
+
+内核模块可以在`/etc/modules-load.d/` 下的文件中明确列出，以便 systemd 在引导过程中加载它们。 每个配置文件都以 `/etc/modules-load.d/_program_.conf`的样式命名。
+
+```conf
+# /etc/modules-load.d/virtio-net.conf
+
+# Load virtio_net.ko at boot
+virtio_net
+```
