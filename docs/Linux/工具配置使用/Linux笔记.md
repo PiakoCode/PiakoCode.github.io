@@ -601,3 +601,24 @@ ls -l | nvim -
 # Load virtio_net.ko at boot
 virtio_net
 ```
+
+
+
+
+## Magick
+
+给图片添加圆角切割
+
+```bash
+#! /bin/bash
+
+# $1 为输入文件，$2 为输出文件，$3 为圆角半径
+
+r=$3
+magick "$1" \
+  \( +clone  -alpha extract \
+    -draw "fill black polygon 0,0 0,$r $r,0 fill white circle $r,$r $r,0" \
+    \( +clone -flip \) -compose Multiply -composite \
+    \( +clone -flop \) -compose Multiply -composite \
+  \) -alpha off -compose CopyOpacity -composite "$2"
+```
