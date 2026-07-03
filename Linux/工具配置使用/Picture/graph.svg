@@ -1,0 +1,1385 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="502" onload="init(evt)" viewBox="0 0 1200 502" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="502.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="485" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="485" > </text>
+<g id="frames">
+<g >
+<title>std::operator- (41,764,263 samples, 0.03%)</title><rect x="818.7" y="277" width="0.4" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="821.72" y="287.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::operator= (41,389,425 samples, 0.03%)</title><rect x="653.0" y="325" width="0.4" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="656.02" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="213" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="223.5" ></text>
+</g>
+<g >
+<title>[libc.so.6] (3,828,571,307 samples, 3.10%)</title><rect x="609.7" y="389" width="36.6" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="612.74" y="399.5" >[li..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (2,373,879,717 samples, 1.92%)</title><rect x="1162.6" y="293" width="22.6" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1165.57" y="303.5" >[..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="325" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="335.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_data (41,389,425 samples, 0.03%)</title><rect x="653.0" y="293" width="0.4" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="656.02" y="303.5" ></text>
+</g>
+<g >
+<title>std::__shared_count&lt; (41,628,029 samples, 0.03%)</title><rect x="734.0" y="309" width="0.4" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="737.00" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="293" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="303.5" ></text>
+</g>
+<g >
+<title>runFile (30,264,838,634 samples, 24.48%)</title><rect x="647.9" y="389" width="288.8" height="15.0" fill="rgb(230,115,27)" rx="2" ry="2" />
+<text  x="650.85" y="399.5" >runFile</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,537,379 samples, 0.03%)</title><rect x="645.9" y="341" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="648.88" y="351.5" ></text>
+</g>
+<g >
+<title>printf@plt (208,504,456 samples, 0.17%)</title><rect x="677.2" y="357" width="2.0" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="680.23" y="367.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (998,767,395 samples, 0.81%)</title><rect x="1175.7" y="213" width="9.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1178.70" y="223.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="165" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="175.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::push_back (2,545,809,069 samples, 2.06%)</title><rect x="794.8" y="325" width="24.3" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="797.82" y="335.5" >s..</text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::_M_pop_back_aux (170,000,814 samples, 0.14%)</title><rect x="786.0" y="309" width="1.7" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="789.05" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (2,206,973,461 samples, 1.78%)</title><rect x="1164.2" y="277" width="21.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1167.17" y="287.5" ></text>
+</g>
+<g >
+<title>std::__shared_ptr&lt;Chunk,  (41,543,874 samples, 0.03%)</title><rect x="711.8" y="325" width="0.4" height="15.0" fill="rgb(208,16,4)" rx="2" ry="2" />
+<text  x="714.76" y="335.5" ></text>
+</g>
+<g >
+<title>std::__deque_buf_size (41,779,931 samples, 0.03%)</title><rect x="815.9" y="277" width="0.4" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="818.93" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="181" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="191.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="213" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="223.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::size (41,764,263 samples, 0.03%)</title><rect x="818.7" y="293" width="0.4" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="821.72" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="261" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (165,294,039 samples, 0.13%)</title><rect x="1183.7" y="69" width="1.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1186.65" y="79.5" ></text>
+</g>
+<g >
+<title>binary (41,714,262 samples, 0.03%)</title><rect x="653.8" y="309" width="0.4" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="656.81" y="319.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::_S_max_size (166,501,339 samples, 0.13%)</title><rect x="817.1" y="277" width="1.6" height="15.0" fill="rgb(221,76,18)" rx="2" ry="2" />
+<text  x="820.13" y="287.5" ></text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::~stack (41,656,260 samples, 0.03%)</title><rect x="927.2" y="341" width="0.4" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="930.17" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="101" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="111.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (2,876,037,361 samples, 2.33%)</title><rect x="1127.2" y="293" width="27.4" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1130.18" y="303.5" >[..</text>
+</g>
+<g >
+<title>cpplox (123,655,100,643 samples, 100.00%)</title><rect x="10.0" y="437" width="1180.0" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="13.00" y="447.5" >cpplox</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="229" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="239.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="85" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="95.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="325" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="229" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="239.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="325" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="335.5" ></text>
+</g>
+<g >
+<title>std::shared_ptr&lt;Chunk&gt;::shared_ptr (41,628,029 samples, 0.03%)</title><rect x="734.0" y="341" width="0.4" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="737.00" y="351.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (3,501,171,543 samples, 2.83%)</title><rect x="1126.8" y="309" width="33.4" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1129.78" y="319.5" >[[..</text>
+</g>
+<g >
+<title>emitByte (41,714,262 samples, 0.03%)</title><rect x="653.8" y="293" width="0.4" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="656.81" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,512,892 samples, 0.03%)</title><rect x="1154.2" y="165" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1157.23" y="175.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (83,546,713 samples, 0.07%)</title><rect x="1134.7" y="213" width="0.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1137.74" y="223.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,416,926,567 samples, 1.15%)</title><rect x="1141.1" y="261" width="13.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1144.10" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="149" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="159.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="117" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="127.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,526,446 samples, 0.03%)</title><rect x="157.2" y="341" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="160.23" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="245" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="255.5" ></text>
+</g>
+<g >
+<title>printValue (125,356,792 samples, 0.10%)</title><rect x="654.6" y="357" width="1.2" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="657.61" y="367.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="229" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="239.5" ></text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::top (415,873,222 samples, 0.34%)</title><rect x="932.7" y="357" width="4.0" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="935.69" y="367.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::operator-- (2,543,251,349 samples, 2.06%)</title><rect x="873.5" y="309" width="24.3" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="876.53" y="319.5" >s..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="197" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="207.5" ></text>
+</g>
+<g >
+<title>std::__deque_buf_size (41,565,161 samples, 0.03%)</title><rect x="897.4" y="261" width="0.4" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="900.40" y="271.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::end (3,077,810,923 samples, 2.49%)</title><rect x="897.8" y="309" width="29.4" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="900.80" y="319.5" >st..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="261" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="271.5" ></text>
+</g>
+<g >
+<title>_IO_file_write (41,530,034 samples, 0.03%)</title><rect x="1122.8" y="405" width="0.4" height="15.0" fill="rgb(218,59,14)" rx="2" ry="2" />
+<text  x="1125.83" y="415.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (166,729,942 samples, 0.13%)</title><rect x="608.2" y="245" width="1.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="611.15" y="255.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,540,579,038 samples, 1.25%)</title><rect x="1170.5" y="245" width="14.7" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1173.53" y="255.5" ></text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::pop (2,964,911,744 samples, 2.40%)</title><rect x="761.0" y="341" width="28.3" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="763.97" y="351.5" >s..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (290,231,304 samples, 0.23%)</title><rect x="1182.5" y="133" width="2.7" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1185.46" y="143.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (208,497,701 samples, 0.17%)</title><rect x="607.8" y="261" width="1.9" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.75" y="271.5" ></text>
+</g>
+<g >
+<title>[libc.so.6] (542,033,003 samples, 0.44%)</title><rect x="647.9" y="357" width="5.1" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="650.85" y="367.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::~deque (41,656,260 samples, 0.03%)</title><rect x="927.2" y="325" width="0.4" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="930.17" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,560,178 samples, 0.03%)</title><rect x="1122.4" y="341" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1125.44" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="261" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="271.5" ></text>
+</g>
+<g >
+<title>decltype  (958,363,378 samples, 0.78%)</title><rect x="806.0" y="309" width="9.1" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="808.99" y="319.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::operator* (1,875,485,764 samples, 1.52%)</title><rect x="855.6" y="309" width="17.9" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="858.63" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (6,249,762,024 samples, 5.05%)</title><rect x="1125.6" y="357" width="59.6" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1128.59" y="367.5" >[[kern..</text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_S_buffer_size (41,565,161 samples, 0.03%)</title><rect x="897.4" y="277" width="0.4" height="15.0" fill="rgb(245,188,45)" rx="2" ry="2" />
+<text  x="900.40" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (40,551,219 samples, 0.03%)</title><rect x="1133.6" y="197" width="0.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1136.56" y="207.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::max_size (208,261,495 samples, 0.17%)</title><rect x="816.7" y="293" width="2.0" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="819.73" y="303.5" ></text>
+</g>
+<g >
+<title>parsePrecedence (83,299,352 samples, 0.07%)</title><rect x="653.8" y="325" width="0.8" height="15.0" fill="rgb(233,128,30)" rx="2" ry="2" />
+<text  x="656.81" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,526,446 samples, 0.03%)</title><rect x="157.2" y="373" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="160.23" y="383.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,526,446 samples, 0.03%)</title><rect x="157.2" y="325" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="160.23" y="335.5" ></text>
+</g>
+<g >
+<title>cfree (166,515,741 samples, 0.13%)</title><rect x="1185.2" y="421" width="1.6" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1188.23" y="431.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (2,623,740,159 samples, 2.12%)</title><rect x="1160.2" y="325" width="25.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1163.19" y="335.5" >[..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (416,816,329 samples, 0.34%)</title><rect x="1156.2" y="229" width="4.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1159.21" y="239.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::deque (83,168,100 samples, 0.07%)</title><rect x="819.1" y="325" width="0.8" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="822.12" y="335.5" ></text>
+</g>
+<g >
+<title>__libc_alloca_cutoff (164,666,776 samples, 0.13%)</title><rect x="646.3" y="405" width="1.6" height="15.0" fill="rgb(225,94,22)" rx="2" ry="2" />
+<text  x="649.28" y="415.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="37" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="47.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (83,272,890 samples, 0.07%)</title><rect x="1137.5" y="245" width="0.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.52" y="255.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,333,796,610 samples, 1.08%)</title><rect x="1141.9" y="245" width="12.7" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1144.89" y="255.5" ></text>
+</g>
+<g >
+<title>[libc.so.6] (51,206,692,689 samples, 41.41%)</title><rect x="157.6" y="405" width="488.7" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="160.63" y="415.5" >[libc.so.6]</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="277" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="229" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="239.5" ></text>
+</g>
+<g >
+<title>number (41,585,090 samples, 0.03%)</title><rect x="654.2" y="309" width="0.4" height="15.0" fill="rgb(221,73,17)" rx="2" ry="2" />
+<text  x="657.21" y="319.5" ></text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::stack&lt;std::deque&lt;double, std::allocator&lt;double&gt; &gt;, void&gt; (83,168,100 samples, 0.07%)</title><rect x="819.1" y="341" width="0.8" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="822.12" y="351.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_M_set_node (83,316,748 samples, 0.07%)</title><rect x="897.0" y="293" width="0.8" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="900.00" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="277" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="287.5" ></text>
+</g>
+<g >
+<title>std::__deque_buf_size (41,590,272 samples, 0.03%)</title><rect x="819.5" y="293" width="0.4" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="822.51" y="303.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (415,945,189 samples, 0.34%)</title><rect x="1131.6" y="245" width="3.9" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1134.57" y="255.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (748,159,871 samples, 0.61%)</title><rect x="1178.1" y="197" width="7.1" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1181.09" y="207.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="293" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="303.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (665,137,364 samples, 0.54%)</title><rect x="1130.0" y="261" width="6.3" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1132.98" y="271.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::push_back (83,117,162 samples, 0.07%)</title><rect x="733.2" y="341" width="0.8" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="736.21" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="309" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="165" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="175.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="293" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="303.5" ></text>
+</g>
+<g >
+<title>emitConstant (41,585,090 samples, 0.03%)</title><rect x="654.2" y="293" width="0.4" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="657.21" y="303.5" ></text>
+</g>
+<g >
+<title>main (30,264,838,634 samples, 24.48%)</title><rect x="647.9" y="405" width="288.8" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="650.85" y="415.5" >main</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,526,446 samples, 0.03%)</title><rect x="157.2" y="357" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="160.23" y="367.5" ></text>
+</g>
+<g >
+<title>printf (1,205,173,575 samples, 0.97%)</title><rect x="721.7" y="341" width="11.5" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="724.71" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,537,379 samples, 0.03%)</title><rect x="645.9" y="357" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="648.88" y="367.5" ></text>
+</g>
+<g >
+<title>disassembleInstruction (41,534,167 samples, 0.03%)</title><rect x="653.4" y="309" width="0.4" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="656.42" y="319.5" ></text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::top (11,239,835,601 samples, 9.09%)</title><rect x="819.9" y="341" width="107.3" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="822.91" y="351.5" >std::stack&lt;do..</text>
+</g>
+<g >
+<title>[libc.so.6] (97,106,742,698 samples, 78.53%)</title><rect x="10.0" y="421" width="926.7" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="13.00" y="431.5" >[libc.so.6]</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="53" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="63.5" ></text>
+</g>
+<g >
+<title>std::operator== (83,335,208 samples, 0.07%)</title><rect x="760.2" y="325" width="0.8" height="15.0" fill="rgb(229,110,26)" rx="2" ry="2" />
+<text  x="763.18" y="335.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_is_local (41,389,425 samples, 0.03%)</title><rect x="653.0" y="309" width="0.4" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="656.02" y="319.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_Deque_iterator (41,523,955 samples, 0.03%)</title><rect x="855.2" y="309" width="0.4" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="858.23" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (373,656,179 samples, 0.30%)</title><rect x="1181.7" y="165" width="3.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1184.66" y="175.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="85" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="95.5" ></text>
+</g>
+<g >
+<title>std::__shared_ptr&lt;Chunk,  (41,628,029 samples, 0.03%)</title><rect x="734.0" y="325" width="0.4" height="15.0" fill="rgb(208,16,4)" rx="2" ry="2" />
+<text  x="737.00" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="309" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="319.5" ></text>
+</g>
+<g >
+<title>std::__deque_buf_size (41,764,263 samples, 0.03%)</title><rect x="818.7" y="245" width="0.4" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="821.72" y="255.5" ></text>
+</g>
+<g >
+<title>void std::deque&lt;double, std::allocator&lt;double&gt; &gt;::_M_push_back_aux&lt;double const&amp;&gt; (416,649,006 samples, 0.34%)</title><rect x="815.1" y="309" width="4.0" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="818.14" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="293" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,915,264,088 samples, 1.55%)</title><rect x="1167.0" y="261" width="18.2" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1169.95" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,560,178 samples, 0.03%)</title><rect x="1122.4" y="325" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1125.44" y="335.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::~_Deque_base (41,656,260 samples, 0.03%)</title><rect x="927.2" y="309" width="0.4" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="930.17" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (82,773,412 samples, 0.07%)</title><rect x="1135.5" y="229" width="0.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.54" y="239.5" ></text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::empty (537,010,923 samples, 0.43%)</title><rect x="927.6" y="357" width="5.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="930.56" y="367.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="277" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="287.5" ></text>
+</g>
+<g >
+<title>decltype  (83,018,504 samples, 0.07%)</title><rect x="794.0" y="325" width="0.8" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="797.03" y="335.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_M_set_node (83,541,113 samples, 0.07%)</title><rect x="786.9" y="293" width="0.8" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="789.87" y="303.5" ></text>
+</g>
+<g >
+<title>write (6,496,938,978 samples, 5.25%)</title><rect x="1123.2" y="405" width="62.0" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="1126.23" y="415.5" >write</text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::empty (2,784,335,780 samples, 2.25%)</title><rect x="734.4" y="341" width="26.6" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="737.40" y="351.5" >s..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (708,914,507 samples, 0.57%)</title><rect x="1147.9" y="197" width="6.7" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1150.86" y="207.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="133" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="143.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="341" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="261" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="197" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="207.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (208,497,701 samples, 0.17%)</title><rect x="607.8" y="277" width="1.9" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.75" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="213" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="223.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,560,178 samples, 0.03%)</title><rect x="1122.4" y="389" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1125.44" y="399.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="69" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="79.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="197" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="207.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,526,446 samples, 0.03%)</title><rect x="157.2" y="389" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="160.23" y="399.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,042,220,933 samples, 0.84%)</title><rect x="1144.7" y="229" width="9.9" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1147.68" y="239.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="277" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (248,471,380 samples, 0.20%)</title><rect x="1182.9" y="101" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1185.86" y="111.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (248,471,380 samples, 0.20%)</title><rect x="1182.9" y="117" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1185.86" y="127.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::empty (1,618,920,944 samples, 1.31%)</title><rect x="744.7" y="325" width="15.5" height="15.0" fill="rgb(205,2,0)" rx="2" ry="2" />
+<text  x="747.73" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="181" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="191.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="389" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="399.5" ></text>
+</g>
+<g >
+<title>all (123,655,100,643 samples, 100%)</title><rect x="10.0" y="453" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="463.5" ></text>
+</g>
+<g >
+<title>[unknown] (26,048,253,751 samples, 21.07%)</title><rect x="936.7" y="421" width="248.5" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="939.66" y="431.5" >[unknown]</text>
+</g>
+<g >
+<title>disassembleChunk (41,534,167 samples, 0.03%)</title><rect x="653.4" y="325" width="0.4" height="15.0" fill="rgb(231,124,29)" rx="2" ry="2" />
+<text  x="656.42" y="335.5" ></text>
+</g>
+<g >
+<title>run (26,024,207,821 samples, 21.05%)</title><rect x="679.2" y="357" width="248.4" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="682.22" y="367.5" >run</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (2,498,893,440 samples, 2.02%)</title><rect x="1161.4" y="309" width="23.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1164.38" y="319.5" >[..</text>
+</g>
+<g >
+<title>void std::destroy_at&lt;double&gt; (125,188,405 samples, 0.10%)</title><rect x="788.1" y="325" width="1.2" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="791.07" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (416,816,329 samples, 0.34%)</title><rect x="1156.2" y="261" width="4.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1159.21" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (6,208,226,855 samples, 5.02%)</title><rect x="1126.0" y="341" width="59.2" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1128.98" y="351.5" >[[kern..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="245" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="255.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (166,729,942 samples, 0.13%)</title><rect x="608.2" y="229" width="1.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="611.15" y="239.5" ></text>
+</g>
+<g >
+<title>std::_Sp_counted_base&lt; (41,628,029 samples, 0.03%)</title><rect x="734.0" y="293" width="0.4" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="737.00" y="303.5" ></text>
+</g>
+<g >
+<title>disassembleInstruction (41,543,874 samples, 0.03%)</title><rect x="711.8" y="341" width="0.4" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="714.76" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="309" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="319.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_M_set_node (41,730,188 samples, 0.03%)</title><rect x="816.3" y="293" width="0.4" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="819.33" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="373" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="383.5" ></text>
+</g>
+<g >
+<title>std::vector&lt;unsigned char, std::allocator&lt;unsigned char&gt; &gt;::back (41,714,262 samples, 0.03%)</title><rect x="653.8" y="245" width="0.4" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="656.81" y="255.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="197" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="207.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (6,371,917,330 samples, 5.15%)</title><rect x="1124.4" y="373" width="60.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1127.42" y="383.5" >[[kern..</text>
+</g>
+<g >
+<title>std::stack&lt;double, std::deque&lt;double, std::allocator&lt;double&gt; &gt; &gt;::push (3,128,107,922 samples, 2.53%)</title><rect x="789.3" y="341" width="29.8" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="792.26" y="351.5" >st..</text>
+</g>
+<g >
+<title>makeConstant (41,585,090 samples, 0.03%)</title><rect x="654.2" y="277" width="0.4" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="657.21" y="287.5" ></text>
+</g>
+<g >
+<title>strchrnul@plt (83,351,896 samples, 0.07%)</title><rect x="1187.6" y="421" width="0.8" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="1190.61" y="431.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (500,104,814 samples, 0.40%)</title><rect x="1155.4" y="277" width="4.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1158.42" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="325" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,560,178 samples, 0.03%)</title><rect x="1122.4" y="373" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1125.44" y="383.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_M_get_Tp_allocator (625,216,062 samples, 0.51%)</title><rect x="780.1" y="309" width="5.9" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="783.08" y="319.5" ></text>
+</g>
+<g >
+<title>[libc.so.6] (623,953,823 samples, 0.50%)</title><rect x="705.8" y="341" width="6.0" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="708.81" y="351.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_S_buffer_size (41,764,263 samples, 0.03%)</title><rect x="818.7" y="261" width="0.4" height="15.0" fill="rgb(245,188,45)" rx="2" ry="2" />
+<text  x="821.72" y="271.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::_Deque_iterator (1,956,503,259 samples, 1.58%)</title><rect x="908.5" y="293" width="18.7" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="911.50" y="303.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_M_allocate_node (83,182,645 samples, 0.07%)</title><rect x="815.5" y="293" width="0.8" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="818.54" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,794,389 samples, 0.03%)</title><rect x="732.8" y="293" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="735.81" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (6,496,938,978 samples, 5.25%)</title><rect x="1123.2" y="389" width="62.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1126.23" y="399.5" >[[kern..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (290,231,304 samples, 0.23%)</title><rect x="1182.5" y="149" width="2.7" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1185.46" y="159.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="325" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="335.5" ></text>
+</g>
+<g >
+<title>malloc (83,572,741 samples, 0.07%)</title><rect x="1186.8" y="421" width="0.8" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1189.82" y="431.5" ></text>
+</g>
+<g >
+<title>strlen@plt (166,663,816 samples, 0.13%)</title><rect x="1188.4" y="421" width="1.6" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="1191.41" y="431.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,165,424,298 samples, 0.94%)</title><rect x="1174.1" y="229" width="11.1" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1177.11" y="239.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,537,379 samples, 0.03%)</title><rect x="645.9" y="373" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="648.88" y="383.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (581,349,351 samples, 0.47%)</title><rect x="1179.7" y="181" width="5.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1182.68" y="191.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (416,816,329 samples, 0.34%)</title><rect x="1156.2" y="213" width="4.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1159.21" y="223.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="165" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="175.5" ></text>
+</g>
+<g >
+<title>unsigned char&amp; std::vector&lt;unsigned char, std::allocator&lt;unsigned char&gt; &gt;::emplace_back&lt;unsigned char&amp;&gt; (41,714,262 samples, 0.03%)</title><rect x="653.8" y="261" width="0.4" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="656.81" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (165,294,039 samples, 0.13%)</title><rect x="1183.7" y="85" width="1.5" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1186.65" y="95.5" ></text>
+</g>
+<g >
+<title>endCompiler (41,534,167 samples, 0.03%)</title><rect x="653.4" y="341" width="0.4" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="656.42" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (416,816,329 samples, 0.34%)</title><rect x="1156.2" y="245" width="4.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1159.21" y="255.5" ></text>
+</g>
+<g >
+<title>compile (166,222,944 samples, 0.13%)</title><rect x="653.0" y="357" width="1.6" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="656.02" y="367.5" ></text>
+</g>
+<g >
+<title>cfree (41,671,795 samples, 0.03%)</title><rect x="786.5" y="277" width="0.4" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="789.48" y="287.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (124,098,039 samples, 0.10%)</title><rect x="1132.8" y="229" width="1.1" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1135.76" y="239.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,560,178 samples, 0.03%)</title><rect x="1122.4" y="309" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1125.44" y="319.5" ></text>
+</g>
+<g >
+<title>[libc.so.6] (19,509,784,739 samples, 15.78%)</title><rect x="936.7" y="405" width="186.1" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="939.66" y="415.5" >[libc.so.6]</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (333,563,416 samples, 0.27%)</title><rect x="1157.0" y="197" width="3.2" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1160.01" y="207.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="309" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="133" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="143.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_M_deallocate_node (41,671,795 samples, 0.03%)</title><rect x="786.5" y="293" width="0.4" height="15.0" fill="rgb(220,73,17)" rx="2" ry="2" />
+<text  x="789.48" y="303.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::pop_back (2,049,225,976 samples, 1.66%)</title><rect x="768.5" y="325" width="19.6" height="15.0" fill="rgb(248,199,47)" rx="2" ry="2" />
+<text  x="771.52" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (208,566,763 samples, 0.17%)</title><rect x="1136.3" y="261" width="2.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1139.33" y="271.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,617,314 samples, 0.03%)</title><rect x="609.3" y="213" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="612.35" y="223.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_Deque_base (83,168,100 samples, 0.07%)</title><rect x="819.1" y="309" width="0.8" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="822.12" y="319.5" ></text>
+</g>
+<g >
+<title>interpret (30,264,838,634 samples, 24.48%)</title><rect x="647.9" y="373" width="288.8" height="15.0" fill="rgb(224,90,21)" rx="2" ry="2" />
+<text  x="650.85" y="383.5" >interpret</text>
+</g>
+<g >
+<title>printf (2,245,629,473 samples, 1.82%)</title><rect x="655.8" y="357" width="21.4" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="658.81" y="367.5" >p..</text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::operator* (83,258,331 samples, 0.07%)</title><rect x="829.0" y="325" width="0.8" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="832.01" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (875,237,655 samples, 0.71%)</title><rect x="1146.3" y="213" width="8.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1149.27" y="223.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="117" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="127.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="309" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (250,235,782 samples, 0.20%)</title><rect x="607.4" y="357" width="2.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="610.36" y="367.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="149" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="159.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="181" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="191.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (1,708,836,167 samples, 1.38%)</title><rect x="1138.3" y="277" width="16.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1141.32" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,618,775 samples, 0.03%)</title><rect x="793.6" y="245" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="796.63" y="255.5" ></text>
+</g>
+<g >
+<title>Scanner::operator= (41,389,425 samples, 0.03%)</title><rect x="653.0" y="341" width="0.4" height="15.0" fill="rgb(248,202,48)" rx="2" ry="2" />
+<text  x="656.02" y="351.5" ></text>
+</g>
+<g >
+<title>expression (83,299,352 samples, 0.07%)</title><rect x="653.8" y="341" width="0.8" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="656.81" y="351.5" ></text>
+</g>
+<g >
+<title>printValue (1,000,709,362 samples, 0.81%)</title><rect x="712.2" y="341" width="9.5" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="715.16" y="351.5" ></text>
+</g>
+<g >
+<title>void std::destroy_at&lt;double&gt; (41,815,141 samples, 0.03%)</title><rect x="787.7" y="309" width="0.4" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="790.67" y="319.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,529,563 samples, 0.03%)</title><rect x="1137.9" y="101" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1140.92" y="111.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (208,504,275 samples, 0.17%)</title><rect x="1152.6" y="181" width="2.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1155.63" y="191.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (1,083,854,213 samples, 0.88%)</title><rect x="1128.0" y="277" width="10.3" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1130.97" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="245" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="255.5" ></text>
+</g>
+<g >
+<title>std::operator== (1,120,230,472 samples, 0.91%)</title><rect x="749.5" y="309" width="10.7" height="15.0" fill="rgb(229,110,26)" rx="2" ry="2" />
+<text  x="752.49" y="319.5" ></text>
+</g>
+<g >
+<title>double&amp; std::vector&lt;double, std::allocator&lt;double&gt; &gt;::emplace_back&lt;double&amp;&gt; (41,585,090 samples, 0.03%)</title><rect x="654.2" y="261" width="0.4" height="15.0" fill="rgb(205,3,0)" rx="2" ry="2" />
+<text  x="657.21" y="271.5" ></text>
+</g>
+<g >
+<title>Chunk::writeChunk (41,714,262 samples, 0.03%)</title><rect x="653.8" y="277" width="0.4" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="656.81" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (583,457,413 samples, 0.47%)</title><rect x="1154.6" y="293" width="5.6" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1157.62" y="303.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (166,851,975 samples, 0.13%)</title><rect x="1133.9" y="229" width="1.6" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1136.94" y="239.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (40,551,219 samples, 0.03%)</title><rect x="1133.6" y="213" width="0.3" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1136.56" y="223.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="229" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="239.5" ></text>
+</g>
+<g >
+<title>std::_Deque_iterator&lt;double, double&amp;, double*&gt;::operator-- (83,550,345 samples, 0.07%)</title><rect x="829.8" y="325" width="0.8" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="832.80" y="335.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,760,407 samples, 0.03%)</title><rect x="711.4" y="213" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="714.37" y="223.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_M_get_Tp_allocator (41,760,156 samples, 0.03%)</title><rect x="816.7" y="277" width="0.4" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="819.73" y="287.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (82,773,412 samples, 0.07%)</title><rect x="1135.5" y="245" width="0.8" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.54" y="255.5" ></text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_M_get_Tp_allocator (124,346,242 samples, 0.10%)</title><rect x="767.3" y="325" width="1.2" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="770.33" y="335.5" ></text>
+</g>
+<g >
+<title>[[btrfs]] (3,501,171,543 samples, 2.83%)</title><rect x="1126.8" y="325" width="33.4" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1129.78" y="335.5" >[[..</text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,790,093 samples, 0.03%)</title><rect x="705.4" y="341" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="708.41" y="351.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,755,994 samples, 0.03%)</title><rect x="1135.1" y="181" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1138.14" y="191.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,526,446 samples, 0.03%)</title><rect x="157.2" y="405" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="160.23" y="415.5" ></text>
+</g>
+<g >
+<title>[[kernel.kallsyms]] (41,560,178 samples, 0.03%)</title><rect x="1122.4" y="357" width="0.4" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1125.44" y="367.5" ></text>
+</g>
+<g >
+<title>std::deque&lt;double, std::allocator&lt;double&gt; &gt;::back (10,119,559,971 samples, 8.18%)</title><rect x="830.6" y="325" width="96.6" height="15.0" fill="rgb(226,97,23)" rx="2" ry="2" />
+<text  x="833.60" y="335.5" >std::deque&lt;..</text>
+</g>
+<g >
+<title>std::_Deque_base&lt;double, std::allocator&lt;double&gt; &gt;::_Deque_impl::_Deque_impl (41,577,828 samples, 0.03%)</title><rect x="819.1" y="293" width="0.4" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="822.12" y="303.5" ></text>
+</g>
+</g>
+</svg>
